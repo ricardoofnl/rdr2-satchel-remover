@@ -1,37 +1,46 @@
-# GoldHEN plugin build. arm64 macOS: uses Homebrew LLVM at /opt/homebrew (not the
-# Intel /usr/local the stock samples assume). override the two SDK paths via env if needed.
-OO_PS4_TOOLCHAIN ?= $(HOME)/dproject/ps4-sdk/OpenOrbis-PS4-Toolchain
-GOLDHEN_SDK      ?= $(HOME)/dproject/ps4-sdk/GoldHEN_Plugins_SDK
-LLVM             ?= /opt/homebrew/opt/llvm/bin
+# goldhen plugin build. ci builds this on linux with the openorbis toolchain and the goldhen
+# sdk installed into it. OO_PS4_TOOLCHAIN must point at the toolchain, and libGoldHEN_Hook.a +
+# crtprx.o + the GoldHEN headers must live under it (ci does `make install` then copies crtprx.o)
+TARGET    := satchel_remover.prx
+TOOLCHAIN := $(OO_PS4_TOOLCHAIN)
+PROJDIR   := src
+INTDIR    := build
 
-TARGET  = satchel_remover
-CC      = $(LLVM)/clang
-LD      = $(LLVM)/ld.lld
-# create-fself rebuilt native arm64 (go build in OpenOrbis/create-fself); PATH or absolute
-CFSELF  ?= create-fself
+LIBS   := -lSceLibcInternal -lkernel -lSceSysmodule -lGoldHEN_Hook
+CFILES := $(wildcard $(PROJDIR)/*.c)
+OBJS   := $(patsubst $(PROJDIR)/%.c,$(INTDIR)/%.o,$(CFILES))
 
-CFLAGS  = --target=x86_64-pc-freebsd12-elf -fPIC -funwind-tables -O2 \
-          -isysroot $(OO_PS4_TOOLCHAIN) -isystem $(OO_PS4_TOOLCHAIN)/include \
-          -I$(GOLDHEN_SDK)/include -Isrc
-LDFLAGS = -m elf_x86_64 -pie --script $(OO_PS4_TOOLCHAIN)/link.x -e _init \
-          -L$(OO_PS4_TOOLCHAIN)/lib -L$(GOLDHEN_SDK)
-LIBS    = $(GOLDHEN_SDK)/build/crtprx.o -lGoldHEN_Hook -lkernel -lSceLibcInternal -lSceSysmodule
+CFLAGS  := --target=x86_64-pc-freebsd12-elf -fPIC -funwind-tables -c -O2 \
+           -isysroot $(TOOLCHAIN) -isystem $(TOOLCHAIN)/include -I$(PROJDIR)
+LDFLAGS := -m elf_x86_64 -pie --script $(TOOLCHAIN)/link.x -e _init --eh-frame-hdr \
+           -L$(TOOLCHAIN)/lib $(LIBS)
+CRTPRX  := $(TOOLCHAIN)/lib/crtprx.o
 
-SRCS = src/main.c
-OBJS = $(SRCS:.c=.o)
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Linux)
+  CC   := clang
+  LD   := ld.lld
+  CDIR := linux
+endif
+ifeq ($(UNAME_S),Darwin)
+  CC   := /opt/homebrew/opt/llvm/bin/clang
+  LD   := /opt/homebrew/opt/llvm/bin/ld.lld
+  CDIR := macos
+endif
 
-all: $(TARGET).prx
+all: $(TARGET)
 
-%.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+$(INTDIR):
+	@mkdir -p $(INTDIR)
 
-$(TARGET).elf: $(OBJS)
-	$(LD) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
+$(INTDIR)/%.o: $(PROJDIR)/%.c | $(INTDIR)
+	$(CC) $(CFLAGS) -o $@ $<
 
-$(TARGET).prx: $(TARGET).elf
-	$(CFSELF) -in=$(TARGET).elf -out=$(TARGET).oelf --lib=$(TARGET).prx --paid 0x3800000000000011
+$(TARGET): $(OBJS)
+	$(LD) $(OBJS) $(CRTPRX) -o $(INTDIR)/satchel_remover.elf $(LDFLAGS)
+	$(TOOLCHAIN)/bin/$(CDIR)/create-fself -in=$(INTDIR)/satchel_remover.elf -out=$(INTDIR)/satchel_remover.oelf --lib=$(TARGET) --paid 0x3800000000000011
 
 clean:
-	rm -f $(OBJS) $(TARGET).elf $(TARGET).oelf $(TARGET).prx
+	rm -rf $(INTDIR) $(TARGET)
 
 .PHONY: all clean
