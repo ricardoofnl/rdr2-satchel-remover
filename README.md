@@ -1,38 +1,41 @@
-satchel-remover
+# satchel-remover
 
-goldhen `.prx` plugin that removes the player satchel in red dead redemption 2 on ps4,
-target `CUSA08519` game 1.32
+A GoldHEN `.prx` plugin that removes the player satchel in Red Dead Redemption 2 on PS4
+(`CUSA08519`, game 1.32). It is a runtime mod: it drives RDR2's metaped component natives on
+the player ped from an in-game hook, with no asset or RPF editing.
 
-runtime mod: it calls rdr2's metaped component natives on the player ped in a loop,
-no asset or rpf editing
+## Why a plugin, not an asset mod
 
-why a plugin, not an asset mod
+- RDR2 PS4 archives are `RPF8` with an AES-encrypted table of contents, and no public tool
+  repacks them.
+- The PFS mount is read-only and there is no loose-file loader, so the PC "invisible `.ydd`"
+  swap cannot be reproduced on console.
+- The satchel is a data-driven metaped component (category `SATCHELS`, joaat `0x94504D26`),
+  reachable only through the engine's native system.
 
-- rdr2 ps4 archives are `RPF8` with an aes-encrypted toc and no public tool repacks them
-- the pfs mount is read-only and there is no loose-file loader, so the pc invisible-`.ydd`
-  swap cannot be reproduced on console
-- the satchel is a data-driven metaped component, category `SATCHELS` joaat `0x94504D26`,
-  reachable only through the engine native system
+## How it works
 
-how it works
+- Hooks the `GET_PLAYER_PED` native handler, which the game's scripts call constantly on the
+  script thread, so the plugin's own native calls run on a safe thread.
+- When the player ped carries the `SATCHELS` component it calls `REMOVE_TAG_FROM_META_PED`,
+  then commits with `_UPDATE_PED_VARIATION` and `_SET_ACTIVE_META_PED_COMPONENTS_UPDATED`.
+- It is self-limiting, and re-applies after a wardrobe change streams the satchel back in.
 
-- hook the `GET_PLAYER_PED` native handler (runs on the game script thread), if the ped uses
-  `SATCHELS` call `REMOVE_TAG_FROM_META_PED` then commit with `_UPDATE_PED_VARIATION` and
-  `_SET_ACTIVE_META_PED_COMPONENTS_UPDATED`
-- self-limiting and re-applies after wardrobe reloads
-- fallback if coats break: `_SET_META_PED_TAG` to an empty asset, keeps the component present
+## Building
 
-layout
+The plugin is built in CI (GitHub Actions) with the OpenOrbis PS4 Toolchain and the GoldHEN
+SDK, which produces `satchel_remover.prx` as a build artifact. See `.github/workflows/build.yml`.
 
-- `notes/` verified re notes: native addresses, nativecontext, offset map
-- `src/` plugin source
-- `bin/` local decrypted eboot, gitignored, not committed
+## Install
 
-caveats
+1. Copy `satchel_remover.prx` to `/data/GoldHEN/plugins/` on the PS4.
+2. Add it under the `[CUSA08519]` section of `/data/GoldHEN/plugins.ini`.
+3. Enable the GoldHEN Plugin Loader and relaunch RDR2.
 
-- coat-safety is not guaranteed, some coats may deform, the fallback is a workaround not a
-  perfect match for the pc invisible-model trick
-- straps baked into coat meshes are coat data, so some coats keep a strap
-- all offsets are pinned to `CUSA08519` game 1.32, a game update breaks them
+## Caveats
 
-status: re verified, builds in ci to a .prx, on-console test pending
+- Coat-safety is not guaranteed, some coats may deform. The clean PC invisible-model trick
+  needs an asset swap that is not possible on PS4.
+- Straps baked into coat meshes are part of the coat data, not the satchel component, so some
+  coats will still show a strap.
+- All offsets are pinned to `CUSA08519` game 1.32, so a game update will break them.
