@@ -1,0 +1,15 @@
+# game binary (copyrighted, 139MB) - never commit
+bin/
+# python bridge venv / build junk
+.venv/
+__pycache__/
+*.pyc
+# plugin build output
+build/
+*.o
+*.prx
+*.elf
+*.oelf
+# ghidra / workflow scratch
+tasks/
+.DS_Store
