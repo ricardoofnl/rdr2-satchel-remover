@@ -1,9 +1,8 @@
 #pragma once
 #include <stdint.h>
 
-// rdr2 ps4 CUSA08519, game 1.29. vaddrs = file offset - 0x4000 in bin/eboot.bin.
-// runtime address = proc base_address + vaddr. all handlers verified via the native
-// registration pattern (mov rcx,<hash> ; lea rdx,[rip+handler]). see notes/natives.md.
+// rdr2 ps4 CUSA08519 game 1.29. vaddr = file offset - 0x4000 in bin/eboot.bin,
+// runtime addr = base + vaddr. handlers verified via the native reg pattern, see notes/natives.md
 
 #define GAME_TITLEID  "CUSA08519"
 #define GAME_VERSION  "01.29"   // sys_sdk_proc_info().version, checked before we touch anything

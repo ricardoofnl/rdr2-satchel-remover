@@ -3,10 +3,8 @@
 #include <string.h>
 #include "offsets.h"
 
-// rdr2 1.29 native handler abi (ps4 = sysv amd64): void handler(NativeCtx* ctx), ctx in rdi.
-// derived by disassembling the handlers: ctx+0x00 = ptr to return slot (handler writes a dword
-// there), ctx+0x10 = ptr to args array (8-byte slots, arg0@+0, arg1@+8, ...). argc at +0x08 is
-// not read by the handlers we call but we fill it anyway to match the real struct shape.
+// native handler abi (from disassembly): void handler(ctx) with ctx in rdi
+// ctx+0x00 = return slot ptr, ctx+0x10 = args array of 8-byte slots
 typedef struct {
     void*    ret;   // +0x00
     uint32_t argc;  // +0x08
@@ -16,7 +14,7 @@ typedef struct {
 
 typedef void (*native_fn)(NativeCtx*);
 
-// base is the running eboot base from sys_sdk_proc_info().
+// base is the running eboot base from sys_sdk_proc_info
 static inline uint64_t nat_call(uint64_t base, uint64_t off, const uint64_t* a, uint32_t n) {
     uint64_t ret = 0;
     uint64_t argbuf[8];
@@ -30,9 +28,9 @@ static inline uint64_t nat_call(uint64_t base, uint64_t off, const uint64_t* a, 
     return ret;
 }
 
-// ped handles are 32-bit script handles, passed in the low dword of a slot.
+// ped handles are 32-bit, passed in the low dword of a slot
 static inline int gh_get_player_ped(uint64_t base) {
-    uint64_t a[1] = { 0xFF };  // 0xFF -> local player
+    uint64_t a[1] = { 0xFF };  // 0xff -> local player
     return (int)nat_call(base, OFF_GET_PLAYER_PED, a, 1);
 }
 static inline int gh_is_using_satchel(uint64_t base, int ped) {
@@ -48,6 +46,6 @@ static inline void gh_update_variation(uint64_t base, int ped) {
     nat_call(base, OFF_UPDATE_PED_VARIATION, a, 6);
 }
 static inline void gh_commit_active(uint64_t base, int ped) {
-    uint64_t a[2] = { (uint32_t)ped, 0 };  // isMP = 0
+    uint64_t a[2] = { (uint32_t)ped, 0 };  // ismp = 0
     nat_call(base, OFF_SET_ACTIVE_META_COMPS_UPDATED, a, 2);
 }

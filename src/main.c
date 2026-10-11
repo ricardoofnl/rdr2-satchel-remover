@@ -8,17 +8,13 @@
 
 attr_public const char *g_pluginName    = "satchel_remover";
 attr_public const char *g_pluginDesc    = "hide rdr2 player satchel";
-attr_public const char *g_pluginAuth    = "rikiilham";
+attr_public const char *g_pluginAuth    = "ricardoofnl";
 attr_public uint32_t    g_pluginVersion = 0x00000100;
 
 static volatile int g_run = 0;
 static pthread_t    g_thr;
 static uint64_t     g_base = 0;
 
-// first-cut loop. NOTE: these natives touch the ped pools the game thread also uses, so a
-// side-thread call is a known crash risk. the robust path is to detour a per-frame game
-// function and run tick() from there - that hook point is the next thing to find. keeping
-// the loop behind a swappable tick() so only the caller changes.
 static void tick(uint64_t base) {
     int ped = gh_get_player_ped(base);
     if (!ped) return;
@@ -29,11 +25,13 @@ static void tick(uint64_t base) {
     }
 }
 
+// calling natives from this side thread can crash - they touch pools the game thread uses.
+// real fix is to run tick() from a per-frame game hook (todo)
 static void *worker(void *arg) {
     uint64_t base = (uint64_t)arg;
     while (g_run) {
         tick(base);
-        usleep(300 * 1000);  // re-apply after wardrobe/outfit reloads
+        usleep(300 * 1000);  // re-apply after wardrobe reloads
     }
     return NULL;
 }
@@ -41,9 +39,8 @@ static void *worker(void *arg) {
 int32_t module_start(size_t argc, const void *args) {
     struct proc_info pi;
     if (sys_sdk_proc_info(&pi) != 0) return 0;
-    if (strcmp(pi.titleid, GAME_TITLEID) != 0) return 0;        // only rdr2 EU
-    // fail closed on a game version we did not pin offsets to
-    if (strncmp(pi.version, GAME_VERSION, sizeof(GAME_VERSION) - 1) != 0) return 0;
+    if (strcmp(pi.titleid, GAME_TITLEID) != 0) return 0;  // only rdr2 eu
+    if (strncmp(pi.version, GAME_VERSION, sizeof(GAME_VERSION) - 1) != 0) return 0;  // offsets are version-pinned
     if (pi.base_address == 0) return 0;
 
     g_base = pi.base_address;
