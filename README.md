@@ -16,9 +16,10 @@ why a plugin, not an asset mod
 
 how it works
 
-- loop ~300ms: get the player ped, if it uses `SATCHELS` call `REMOVE_TAG_FROM_META_PED`,
-  then commit with `_UPDATE_PED_VARIATION` and `_SET_ACTIVE_META_PED_COMPONENTS_UPDATED`
-- re-applies after wardrobe reloads
+- hook the `GET_PLAYER_PED` native handler (runs on the game script thread), if the ped uses
+  `SATCHELS` call `REMOVE_TAG_FROM_META_PED` then commit with `_UPDATE_PED_VARIATION` and
+  `_SET_ACTIVE_META_PED_COMPONENTS_UPDATED`
+- self-limiting and re-applies after wardrobe reloads
 - fallback if coats break: `_SET_META_PED_TAG` to an empty asset, keeps the component present
 
 layout
@@ -34,4 +35,4 @@ caveats
 - straps baked into coat meshes are coat data, so some coats keep a strap
 - all offsets are pinned to `CUSA08519` game 1.32, a game update breaks them
 
-status: re done and verified, toolchain and plugin scaffold in progress
+status: re verified, builds in ci to a .prx, on-console test pending

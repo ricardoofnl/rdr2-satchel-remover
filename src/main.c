@@ -1,4 +1,4 @@
-#include <GoldHEN/Common.h>   // orbis libkernel + goldhen (proc_info, sys_sdk_proc_info)
+#include <GoldHEN/Common.h>   // orbis libkernel, goldhen (proc_info), detour api
 #include "offsets.h"
 #include "natives.h"
 
@@ -11,29 +11,29 @@ attr_public const char *g_pluginDesc    = "hide rdr2 player satchel";
 attr_public const char *g_pluginAuth    = "ricardoofnl";
 attr_public uint32_t    g_pluginVersion = 0x00000100;
 
-static volatile int g_run = 0;
-static OrbisPthread  g_thr = 0;
-static uint64_t      g_base = 0;
+static Detour   g_detour;
+static int      g_hooked = 0;
+static uint64_t g_base = 0;
 
-static void tick(uint64_t base) {
-    int ped = gh_get_player_ped(base);
+typedef void (*get_player_ped_t)(NativeCtx *);
+
+// hook on the GET_PLAYER_PED handler. scripts ask for the player ped constantly, so this runs
+// on the game script thread - the only safe place to call these natives. let the original run,
+// read the ped it returned, then strip the satchel. self-limiting: once gone IS_USING is false.
+static void hk_get_player_ped(NativeCtx *ctx) {
+    Detour_Stub(&g_detour, get_player_ped_t, ctx);   // original fills ctx->ret with the ped
+    if (!g_base || !ctx || !ctx->ret) return;
+
+    static unsigned n = 0;
+    if ((++n & 31) != 0) return;   // throttle, it is called many times per frame
+
+    int ped = *(int *)ctx->ret;
     if (!ped) return;
-    if (gh_is_using_satchel(base, ped)) {
-        gh_remove_satchel(base, ped);
-        gh_update_variation(base, ped);
-        gh_commit_active(base, ped);
+    if (gh_is_using_satchel(g_base, ped)) {
+        gh_remove_satchel(g_base, ped);
+        gh_update_variation(g_base, ped);
+        gh_commit_active(g_base, ped);
     }
-}
-
-// natives from this side thread can crash - they touch pools the game thread uses.
-// real fix is to run tick() from a per-frame game hook (todo)
-static void *worker(void *arg) {
-    uint64_t base = (uint64_t)arg;
-    while (g_run) {
-        tick(base);
-        sceKernelUsleep(300 * 1000);  // re-apply after wardrobe reloads
-    }
-    return NULL;
 }
 
 int32_t module_start(size_t argc, const void *args) {
@@ -44,13 +44,17 @@ int32_t module_start(size_t argc, const void *args) {
     if (pi.base_address == 0) return 0;
 
     g_base = pi.base_address;
-    g_run = 1;
-    scePthreadCreate(&g_thr, NULL, worker, (void *)g_base, "satchel");
+    Detour_Construct(&g_detour, DetourMode_x64);
+    Detour_DetourFunction(&g_detour, g_base + OFF_GET_PLAYER_PED, (void *)hk_get_player_ped);
+    g_hooked = 1;
     return 0;
 }
 
 int32_t module_stop(size_t argc, const void *args) {
-    g_run = 0;
-    if (g_thr) scePthreadJoin(g_thr, NULL);
+    if (g_hooked) {
+        Detour_RestoreFunction(&g_detour);
+        Detour_Destroy(&g_detour);
+        g_hooked = 0;
+    }
     return 0;
 }
