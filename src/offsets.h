@@ -1,11 +1,11 @@
 #pragma once
 #include <stdint.h>
 
-// rdr2 ps4 CUSA08519 game 1.29. vaddr = file offset - 0x4000 in bin/eboot.bin,
+// rdr2 ps4 CUSA08519 game 1.32. vaddr = file offset - 0x4000 in bin/eboot.bin,
 // runtime addr = base + vaddr. handlers verified via the native reg pattern, see notes/natives.md
 
 #define GAME_TITLEID  "CUSA08519"
-#define GAME_VERSION  "01.29"   // sys_sdk_proc_info().version, checked before we touch anything
+#define GAME_VERSION  "1.32"   // matched as a substring of sys_sdk_proc_info().version
 
 // metaped category hash, joaat("satchels")
 #define HASH_SATCHELS 0x94504D26u

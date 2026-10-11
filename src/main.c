@@ -39,8 +39,8 @@ static void *worker(void *arg) {
 int32_t module_start(size_t argc, const void *args) {
     struct proc_info pi;
     if (sys_sdk_proc_info(&pi) != 0) return 0;
-    if (strcmp(pi.titleid, GAME_TITLEID) != 0) return 0;  // only rdr2 eu
-    if (strncmp(pi.version, GAME_VERSION, sizeof(GAME_VERSION) - 1) != 0) return 0;  // offsets are version-pinned
+    if (strcmp(pi.titleid, GAME_TITLEID) != 0) return 0;   // only rdr2 eu
+    if (!strstr(pi.version, GAME_VERSION)) return 0;        // offsets are pinned to game 1.32
     if (pi.base_address == 0) return 0;
 
     g_base = pi.base_address;

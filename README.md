@@ -1,7 +1,7 @@
 satchel-remover
 
 goldhen `.prx` plugin that removes the player satchel in red dead redemption 2 on ps4,
-target `CUSA08519` game 1.29
+target `CUSA08519` game 1.32
 
 runtime mod: it calls rdr2's metaped component natives on the player ped in a loop,
 no asset or rpf editing
@@ -32,6 +32,6 @@ caveats
 - coat-safety is not guaranteed, some coats may deform, the fallback is a workaround not a
   perfect match for the pc invisible-model trick
 - straps baked into coat meshes are coat data, so some coats keep a strap
-- all offsets are pinned to `CUSA08519` game 1.29, a game update breaks them
+- all offsets are pinned to `CUSA08519` game 1.32, a game update breaks them
 
 status: re done and verified, toolchain and plugin scaffold in progress

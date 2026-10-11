@@ -1,6 +1,6 @@
 RDR2 PS4 satchel-remover - verified RE notes
 
-target: CUSA08519 (EU), patch0 eboot = game ver 1.29, decrypted ELF x86-64
+target: CUSA08519 (EU), patch0 eboot = game ver 1.32, decrypted ELF x86-64
 file: bin/eboot.bin (139018876 bytes, complete)
 offset map: PT_LOAD exec seg file 0x4000 -> vaddr 0x0, so vaddr = fileoff - 0x4000
 runtime: actual addr = sys_sdk_proc_info().base_address + vaddr (verify slide once on-console)
@@ -50,7 +50,7 @@ core per-tick logic (pseudo):
 
 still to find / do:
   - per-frame hook point on the game/script thread to run native calls from (do NOT call from
-    a raw pthread). candidate: reuse illusion0001 Havana / Mizdx RDR2.prx 1.29 hook point.
+    a raw pthread). candidate: reuse illusion0001 Havana / Mizdx RDR2.prx 1.32 hook point.
   - confirm the scrNativeCallContext size to allocate (ret+args ptrs are enough for direct calls;
     allocate a generous zeroed struct and point m_pReturn/m_pArgs into local buffers)
   - build toolchain: OpenOrbis + GoldHEN_Plugins_SDK, LLVM on arm64 macOS (fix hardcoded intel
@@ -61,4 +61,4 @@ honest caveats:
   - coat-safety not guaranteed; plain removal MAY bug some coats (PC clean fix is an invisible
     .ydd swap we cannot do on PS4). fallback = _SET_META_PED_TAG to empty to keep component present.
   - straps baked into coat meshes are coat data, not the satchel component - some coats keep a strap.
-  - everything pinned to CUSA08519 + 1.29; fail-closed on title/version mismatch.
+  - everything pinned to CUSA08519 + 1.32; fail-closed on title/version mismatch.
