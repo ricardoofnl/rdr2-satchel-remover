@@ -1,7 +1,6 @@
 name: build plugin
 
 on:
-  push:
   workflow_dispatch:
 
 jobs:
